@@ -46,10 +46,17 @@ struct SettingsView: View {
             } header: {
                 Text("全局快捷键")
             }
-
+            Section("音量") {
+                Stepper(value: Binding(
+                    get: { settings.volumeStepPercent },
+                    set: { settings.setVolumeStep($0) }
+                ), in: 0.5 ... 5, step: 0.5) {
+                    LabeledContent("每次调整", value: "\(settings.volumeStepPercent.formatted(.number.precision(.fractionLength(0...1))))%")
+                }
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 240)
+        .frame(width: 480, height: 360)
         .padding(.vertical, 8)
         .onDisappear { settings.cancelRecording() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in

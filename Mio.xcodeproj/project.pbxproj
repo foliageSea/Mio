@@ -19,6 +19,8 @@
 		C0000000000000000000000A /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0000000000000000000000E /* CoreAudio.framework */; };
 		C0000000000000000000000B /* ShortcutSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000010 /* ShortcutSettings.swift */; };
 		C0000000000000000000000C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000011 /* SettingsView.swift */; };
+		C00000000000000000000012 /* SystemVolumeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000012 /* SystemVolumeController.swift */; };
+		C00000000000000000000013 /* VolumeHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000013 /* VolumeHUD.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +41,8 @@
 		B0000000000000000000000F /* Mio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B00000000000000000000010 /* ShortcutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutSettings.swift; sourceTree = "<group>"; };
 		B00000000000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B00000000000000000000012 /* SystemVolumeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVolumeController.swift; sourceTree = "<group>"; };
+		B00000000000000000000013 /* VolumeHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeHUD.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +89,7 @@
 				B00000000000000000000005 /* AudioProcessDiscovery.swift */,
 				B00000000000000000000006 /* AppAudioPipeline.swift */,
 				B00000000000000000000007 /* AudioController.swift */,
+				B00000000000000000000012 /* SystemVolumeController.swift */,
 				B00000000000000000000009 /* AtomicAudio.c */,
 				B0000000000000000000000A /* AtomicAudio.h */,
 			);
@@ -112,6 +117,7 @@
 			children = (
 				B00000000000000000000008 /* MixerMenuView.swift */,
 				B00000000000000000000011 /* SettingsView.swift */,
+				B00000000000000000000013 /* VolumeHUD.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -196,6 +202,8 @@
 				C00000000000000000000009 /* AtomicAudio.c in Sources */,
 				C0000000000000000000000B /* ShortcutSettings.swift in Sources */,
 				C0000000000000000000000C /* SettingsView.swift in Sources */,
+				C00000000000000000000013 /* VolumeHUD.swift in Sources */,
+				C00000000000000000000012 /* SystemVolumeController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

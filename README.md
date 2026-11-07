@@ -33,12 +33,21 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 
 点击音量面板左下角的齿轮打开设置。默认全局快捷键为 `⌃⌥M`，用于唤出或收起同一个音量面板。点击快捷键框后按下新的组合键即可保存，支持清除和恢复默认；录制时按 `Esc` 取消、`Delete` 清除。组合键至少包含 `⌘`、`⌃`、`⌥` 之一。配置会在重启后保留，遇到占用冲突会提示并保留原配置。应用运行时无需额外的辅助功能权限。
 
-快捷键行为检查（包含实际系统注册、冲突回退、持久化和事件回调）：
+默认 `⌃⌥↑` 微增、`⌃⌥↓` 微减系统全局音量。在设置的“每次调整”中配置 0.5%–5% 的步长，默认为 1%。三组快捷键均可独立修改、清除和恢复默认，应用内重复组合键也会提示冲突。调整时短暂显示实际音量百分比，不切换当前应用焦点。每次调整都读取当前默认输出设备；不支持软件音量的 HDMI / 数字输出会显示提示。
+
+快捷键行为检查（包含实际系统注册、冲突回退、持久化、三组事件回调和步长边界）：
 
 ```sh
 mkdir -p build
 xcrun swiftc Mio/ShortcutSettings.swift Tests/ShortcutSettingsChecks.swift -o build/shortcut-checks
 ./build/shortcut-checks
+```
+
+系统音量逻辑检查（使用模拟设备，不改动本机音量）：
+
+```sh
+xcrun swiftc Mio/Audio/CoreAudioHelpers.swift Mio/Audio/SystemVolumeController.swift Tests/SystemVolumeChecks.swift -o build/system-volume-checks
+./build/system-volume-checks
 ```
 
 ## macOS 26 界面
@@ -50,6 +59,7 @@ xcrun swiftc Mio/ShortcutSettings.swift Tests/ShortcutSettingsChecks.swift -o bu
 - 自动显示正在输出音频的进程。
 - 单进程音量和静音。
 - 按 Bundle ID 保存音量。
+- 使用可配置的全局快捷键精细调整系统输出音量。
 - 默认输出设备变化时自动重建控制管线。
 - 音量恢复到 100% 时释放 Process Tap。
 

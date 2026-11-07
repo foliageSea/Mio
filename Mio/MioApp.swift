@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
     private var settingsWindow: NSWindowController?
+    private let volumeHUD = VolumeHUD()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -25,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ShortcutSettings.shared.onAction = { [weak self] action in
             switch action {
             case .toggleWindow: self?.toggleMixer()
+            case .volumeUp: self?.adjustGlobalVolume(direction: 1)
+            case .volumeDown: self?.adjustGlobalVolume(direction: -1)
             }
         }
         ShortcutSettings.shared.start()
@@ -49,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let window = NSWindow(contentViewController: controller)
             window.title = "Mio 设置"
             window.styleMask = [.titled, .closable]
-            window.setContentSize(NSSize(width: 460, height: 256))
+            window.setContentSize(NSSize(width: 480, height: 376))
             window.isReleasedWhenClosed = false
             window.center()
             settingsWindow = NSWindowController(window: window)
@@ -67,6 +70,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    private func adjustGlobalVolume(direction: Double) {
+        do {
+            let volume = try SystemVolumeController.adjust(by: direction * ShortcutSettings.shared.volumeStepPercent / 100)
+            volumeHUD.show(volume: volume)
+        } catch {
+            volumeHUD.show(error: error.localizedDescription)
         }
     }
 

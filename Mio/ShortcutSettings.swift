@@ -25,22 +25,30 @@ struct AppShortcut: Codable, Equatable {
 
 enum ShortcutAction: UInt32, CaseIterable {
     case toggleWindow = 1
+    case volumeUp = 2
+    case volumeDown = 3
 
     var title: String {
         switch self {
         case .toggleWindow: return "唤出 / 收起窗口"
+        case .volumeUp: return "全局音量微增"
+        case .volumeDown: return "全局音量微减"
         }
     }
 
     var storageKey: String {
         switch self {
         case .toggleWindow: return "windowShortcut"
+        case .volumeUp: return "volumeUpShortcut"
+        case .volumeDown: return "volumeDownShortcut"
         }
     }
 
     var defaultShortcut: AppShortcut {
         switch self {
         case .toggleWindow: return .initial
+        case .volumeUp: return AppShortcut(keyCode: UInt32(kVK_UpArrow), modifiers: UInt32(controlKey | optionKey), key: "↑")
+        case .volumeDown: return AppShortcut(keyCode: UInt32(kVK_DownArrow), modifiers: UInt32(controlKey | optionKey), key: "↓")
         }
     }
 }
@@ -50,6 +58,7 @@ final class ShortcutSettings: ObservableObject {
     @Published private(set) var shortcuts: [ShortcutAction: AppShortcut] = [:]
     @Published private(set) var recordingAction: ShortcutAction?
     @Published private(set) var errorMessage: String?
+    @Published private(set) var volumeStepPercent: Double
     var onAction: ((ShortcutAction) -> Void)?
 
     var isRecording: Bool { recordingAction != nil }
@@ -61,6 +70,8 @@ final class ShortcutSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let storedStep = defaults.object(forKey: "volumeStepPercent") as? Double ?? 1
+        volumeStepPercent = storedStep.isFinite ? min(5, max(0.5, storedStep)) : 1
         for action in ShortcutAction.allCases {
             if let data = defaults.data(forKey: action.storageKey) {
                 shortcuts[action] = try? JSONDecoder().decode(AppShortcut?.self, from: data)
@@ -71,6 +82,12 @@ final class ShortcutSettings: ObservableObject {
     }
 
     func shortcut(for action: ShortcutAction) -> AppShortcut? { shortcuts[action] }
+
+    func setVolumeStep(_ percent: Double) {
+        guard percent.isFinite else { return }
+        volumeStepPercent = min(5, max(0.5, percent))
+        defaults.set(volumeStepPercent, forKey: "volumeStepPercent")
+    }
 
     func start() {
         guard handler == nil else { return }
