@@ -61,13 +61,8 @@ struct MixerMenuView: View {
                 .frame(width: 34, height: 34)
                 .mioGlassBadge(in: Circle())
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Mio")
-                        .font(.headline)
-                    Text("按应用调节音量")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("Mio")
+                    .font(.headline)
 
                 Spacer(minLength: 8)
 
@@ -106,13 +101,8 @@ struct MixerMenuView: View {
             .frame(width: 46, height: 46)
             .mioGlassBadge(in: Circle())
 
-            VStack(spacing: 3) {
-                Text("暂无音频应用")
-                    .font(.callout.weight(.medium))
-                Text("开始播放后会自动显示")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text("暂无音频应用")
+                .font(.callout.weight(.medium))
         }
         .frame(maxWidth: .infinity, minHeight: 168)
         .padding(16)
@@ -141,12 +131,6 @@ struct MixerMenuView: View {
     private var footer: some View {
         MioGlassContainer(spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                Text("音频仅在本机处理")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
                 Spacer()
                 MioIconButton(tint: .red) {
                     NSApplication.shared.terminate(nil)
