@@ -4,6 +4,7 @@ import SwiftUI
 struct MixerMenuView: View {
     @EnvironmentObject private var store: MixerStore
     var onOpenSettings: () -> Void = {}
+    @State private var selection = MixerKeyboardSelection()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,18 +14,27 @@ struct MixerMenuView: View {
             if store.processes.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 2) {
-                        ForEach(store.processes) { process in
-                            ProcessVolumeRow(process: process)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 2) {
+                            ForEach(store.processes) { process in
+                                ProcessVolumeRow(
+                                    process: process,
+                                    isSelected: selection.selectedID == process.id,
+                                    onSelect: { selection.select(process.id) }
+                                )
+                                .id(process.id)
+                            }
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
+                    // Give the popover a concrete height even when the list scrolls.
+                    .frame(height: processListHeight)
+                    .onChange(of: selection.selectedID) { _, id in
+                        if let id { proxy.scrollTo(id) }
+                    }
                 }
-                // A ScrollView has no intrinsic height. MenuBarExtra may therefore
-                // collapse it to zero even though it contains process rows.
-                .frame(height: processListHeight)
             }
 
             if let error = store.errorMessage {
@@ -35,6 +45,13 @@ struct MixerMenuView: View {
             sectionDivider
             footer
         }
+        .background {
+            MixerKeyboardInput(onArrow: handleArrowKey)
+                .frame(width: 0, height: 0)
+        }
+        .onChange(of: store.processes.map(\.id), initial: true) { _, ids in
+            selection.reconcile(ids)
+        }
         .frame(width: 360)
         .fixedSize(horizontal: false, vertical: true)
         .background(.ultraThinMaterial)
@@ -43,6 +60,25 @@ struct MixerMenuView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.1))
         }
+    }
+
+    private func handleArrowKey(_ keyCode: UInt16) -> Bool {
+        let ids = store.processes.map(\.id)
+        selection.reconcile(ids)
+        guard let id = selection.selectedID else { return false }
+        switch keyCode {
+        case 126: selection.move(by: -1, in: ids)
+        case 125: selection.move(by: 1, in: ids)
+        case 123, 124:
+            guard let process = store.processes.first(where: { $0.id == id }) else { return false }
+            let control = store.control(for: process)
+            // Match the disabled slider: arrow keys do not change a muted app.
+            guard !control.isMuted else { return true }
+            let direction = keyCode == 124 ? 1.0 : -1.0
+            store.setVolume(Double(control.volume) + direction * ShortcutSettings.shared.volumeStepPercent / 100, for: process)
+        default: return false
+        }
+        return true
     }
 
     private var processListHeight: CGFloat {
@@ -158,11 +194,59 @@ struct MixerMenuView: View {
     }
 }
 
+/// Receives keys before a focused slider or scroll view can consume the arrows.
+/// The monitor is local to this process and scoped to the hosting window.
+struct MixerKeyboardInput: NSViewRepresentable {
+    let onArrow: (UInt16) -> Bool
+
+    func makeNSView(context: Context) -> KeyMonitorView {
+        let view = KeyMonitorView()
+        view.onArrow = onArrow
+        return view
+    }
+
+    func updateNSView(_ view: KeyMonitorView, context: Context) {
+        view.onArrow = onArrow
+    }
+
+    static func dismantleNSView(_ view: KeyMonitorView, coordinator: ()) {
+        view.stopMonitoring()
+    }
+
+    final class KeyMonitorView: NSView {
+        var onArrow: ((UInt16) -> Bool)?
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            stopMonitoring()
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, let window = self.window,
+                      window.isVisible, window.isKeyWindow, event.window === window,
+                      event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
+                      (123...126).contains(event.keyCode),
+                      self.onArrow?(event.keyCode) == true else { return event }
+                return nil
+            }
+        }
+
+        func stopMonitoring() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        deinit { stopMonitoring() }
+    }
+}
+
 private struct ProcessVolumeRow: View {
     @EnvironmentObject private var store: MixerStore
     @State private var isHovered = false
 
     let process: AudioProcessInfo
+    let isSelected: Bool
+    let onSelect: () -> Void
 
     private var control: SavedControl {
         store.control(for: process)
@@ -190,7 +274,10 @@ private struct ProcessVolumeRow: View {
                 Slider(
                     value: Binding(
                         get: { Double(control.volume) },
-                        set: { store.setVolume($0, for: process) }
+                        set: {
+                            onSelect()
+                            store.setVolume($0, for: process)
+                        }
                     ),
                     in: 0 ... 1
                 )
@@ -199,6 +286,7 @@ private struct ProcessVolumeRow: View {
             }
 
             MioIconButton(tint: control.isMuted ? .orange : nil) {
+                onSelect()
                 store.toggleMute(for: process)
             } label: {
                 Image(systemName: control.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
@@ -212,8 +300,14 @@ private struct ProcessVolumeRow: View {
         .padding(.vertical, 9)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(isHovered ? 0.055 : 0))
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(isHovered ? 0.055 : 0))
         }
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(isSelected ? Color.accentColor.opacity(0.3) : .clear)
+        }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .simultaneousGesture(TapGesture().onEnded { onSelect() })
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onHover { isHovered = $0 }
     }
