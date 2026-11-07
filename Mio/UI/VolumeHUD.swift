@@ -52,7 +52,7 @@ private struct VolumeHUDView: View {
                 .font(.system(size: 22, weight: .medium))
             if let volume {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("\((Double(volume) * 100).formatted(.number.precision(.fractionLength(0...1))))%")
+                    Text("\(Int((Double(volume) * 100).rounded()))%")
                         .font(.system(.headline, design: .rounded).monospacedDigit())
                     ProgressView(value: Double(volume))
                         .tint(.primary)
