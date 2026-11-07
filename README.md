@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Mio/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="128" height="128" alt="Mio 应用图标">
+</p>
+
 # Mio
 
 Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节正在播放音频的单个应用音量。
