@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         mixerPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         mixerPanel.isOpaque = false
         mixerPanel.backgroundColor = .clear
-        mixerPanel.hasShadow = true
+        mixerPanel.hasShadow = false
         mixerPanel.isReleasedWhenClosed = false
         mixerPanel.onDismiss = { [weak self] in self?.closeMixer() }
         ShortcutSettings.shared.onAction = { [weak self] action in

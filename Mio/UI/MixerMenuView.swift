@@ -57,10 +57,7 @@ struct MixerMenuView: View {
         .fixedSize(horizontal: false, vertical: true)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.1))
-        }
+
     }
 
     private func handleArrowKey(_ keyCode: UInt16) -> Bool {
