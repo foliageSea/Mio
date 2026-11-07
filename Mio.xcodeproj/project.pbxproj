@@ -17,6 +17,8 @@
 		C00000000000000000000008 /* MixerMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000008 /* MixerMenuView.swift */; };
 		C00000000000000000000009 /* AtomicAudio.c in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000009 /* AtomicAudio.c */; };
 		C0000000000000000000000A /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0000000000000000000000E /* CoreAudio.framework */; };
+		C0000000000000000000000B /* ShortcutSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000010 /* ShortcutSettings.swift */; };
+		C0000000000000000000000C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000011 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +37,8 @@
 		B0000000000000000000000D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B0000000000000000000000E /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		B0000000000000000000000F /* Mio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00000000000000000000010 /* ShortcutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutSettings.swift; sourceTree = "<group>"; };
+		B00000000000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +69,7 @@
 				B00000000000000000000001 /* MioApp.swift */,
 				B00000000000000000000002 /* Models.swift */,
 				B00000000000000000000003 /* MixerStore.swift */,
+				B00000000000000000000010 /* ShortcutSettings.swift */,
 				A00000000000000000000004 /* Audio */,
 				A00000000000000000000007 /* UI */,
 				B0000000000000000000000B /* Mio-Bridging-Header.h */,
@@ -106,6 +111,7 @@
 			isa = PBXGroup;
 			children = (
 				B00000000000000000000008 /* MixerMenuView.swift */,
+				B00000000000000000000011 /* SettingsView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -188,6 +194,8 @@
 				C00000000000000000000007 /* AudioController.swift in Sources */,
 				C00000000000000000000008 /* MixerMenuView.swift in Sources */,
 				C00000000000000000000009 /* AtomicAudio.c in Sources */,
+				C0000000000000000000000B /* ShortcutSettings.swift in Sources */,
+				C0000000000000000000000C /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

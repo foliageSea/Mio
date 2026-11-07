@@ -29,6 +29,18 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 
 构建日志位于 `build/dev-build.log`，开发构建与安装包脚本使用的 Release 产物分开存放。可使用 `./run-dev.sh --help` 查看用法。
 
+## 设置与快捷键
+
+点击音量面板左下角的齿轮打开设置。默认全局快捷键为 `⌃⌥M`，用于唤出或收起同一个音量面板。点击快捷键框后按下新的组合键即可保存，支持清除和恢复默认；录制时按 `Esc` 取消、`Delete` 清除。组合键至少包含 `⌘`、`⌃`、`⌥` 之一。配置会在重启后保留，遇到占用冲突会提示并保留原配置。应用运行时无需额外的辅助功能权限。
+
+快捷键行为检查（包含实际系统注册、冲突回退、持久化和事件回调）：
+
+```sh
+mkdir -p build
+xcrun swiftc Mio/ShortcutSettings.swift Tests/ShortcutSettingsChecks.swift -o build/shortcut-checks
+./build/shortcut-checks
+```
+
 ## macOS 26 界面
 
 界面已适配 macOS 26 Liquid Glass。使用 Xcode 26 或更高版本构建时，控制按钮、状态徽标和容器会启用原生 `GlassEffectContainer` 与 `glassEffect`，图标按钮采用紧凑圆形样式；使用旧版 Xcode 构建时会自动采用 Material 兼容样式，音频功能保持一致。

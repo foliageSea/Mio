@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MixerMenuView: View {
     @EnvironmentObject private var store: MixerStore
+    var onOpenSettings: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
@@ -131,6 +132,15 @@ struct MixerMenuView: View {
     private var footer: some View {
         MioGlassContainer(spacing: 8) {
             HStack(spacing: 8) {
+                MioIconButton {
+                    onOpenSettings()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .help("设置")
+                .accessibilityLabel("设置")
                 Spacer()
                 MioIconButton(tint: .red) {
                     NSApplication.shared.terminate(nil)
