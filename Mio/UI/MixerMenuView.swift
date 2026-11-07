@@ -52,18 +52,13 @@ struct MixerMenuView: View {
     private var header: some View {
         MioGlassContainer(spacing: 10) {
             HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.accentColor.opacity(0.16))
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                }
-                .frame(width: 34, height: 34)
-                .mioGlassBadge(in: Circle())
-
-                Text("Mio")
-                    .font(.headline)
+                Image("MioMenuBar")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22.0 * 178.0 / 326.0)
+                    .foregroundStyle(.primary)
+                    .accessibilityLabel("Mio")
 
                 Spacer(minLength: 8)
 

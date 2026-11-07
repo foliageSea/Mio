@@ -12,9 +12,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var lastPopoverSize = NSSize.zero
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: "Mio")
+            let image = NSImage(named: "MioMenuBar")
+            image?.size = NSSize(width: 22, height: 22.0 * 178.0 / 326.0)
+            image?.isTemplate = true
+            button.image = image
+            button.setAccessibilityLabel("Mio")
+            button.toolTip = "Mio"
             button.target = self
             button.action = #selector(toggleMixer)
         }

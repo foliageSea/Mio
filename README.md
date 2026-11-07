@@ -7,7 +7,7 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 1. 使用 Xcode 打开 `Mio.xcodeproj`。
 2. 在 Mio target 的 Signing & Capabilities 中选择开发团队。
 3. 运行应用，并在首次调节音量时允许系统音频录制权限。
-4. 从菜单栏扬声器图标打开 Mio。
+4. 从菜单栏 Mio 字标打开 Mio。
 
 仓库中的 `build/Mio.app` 是本机临时签名的通用构建，可直接用于当前机器验证。正式分发前需要换成 Developer ID 签名并完成公证。
 
@@ -19,7 +19,7 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 ./run-dev.sh
 ```
 
-脚本使用 Debug 配置，只构建当前 Mac 的架构，复用 `build/DevDerivedData` 进行增量编译，并使用本机 ad-hoc 签名，无需选择开发团队。构建成功后在当前终端运行 Mio，运行日志直接输出到终端，按 `Ctrl+C` 结束。Mio 是菜单栏应用，启动后从菜单栏扬声器图标打开；首次调节音量时需要允许系统音频录制权限。运行前请退出已启动的 Mio，修改代码后重新执行脚本。
+脚本使用 Debug 配置，只构建当前 Mac 的架构，复用 `build/DevDerivedData` 进行增量编译，并使用本机 ad-hoc 签名，无需选择开发团队。构建成功后在当前终端运行 Mio，运行日志直接输出到终端，按 `Ctrl+C` 结束。Mio 是菜单栏应用，启动后从菜单栏 Mio 字标打开；首次调节音量时需要允许系统音频录制权限。运行前请退出已启动的 Mio，修改代码后重新执行脚本。
 
 仅构建、不启动：
 
@@ -49,6 +49,12 @@ xcrun swiftc Mio/ShortcutSettings.swift Tests/ShortcutSettingsChecks.swift -o bu
 xcrun swiftc Mio/Audio/CoreAudioHelpers.swift Mio/Audio/SystemVolumeController.swift Tests/SystemVolumeChecks.swift -o build/system-volume-checks
 ./build/system-volume-checks
 ```
+
+## 应用图标
+
+应用图标使用连笔 Mio 字标，菜单栏使用同款透明底字标并随系统深浅色自动切换；音量面板左上角使用与菜单栏一致的透明底字标，不显示额外文字标题。
+
+应用图标矢量源文件位于 `Mio/Assets.xcassets/MioLogo.imageset/MioLogo.svg`，各尺寸图标保存在 `Mio/Assets.xcassets/AppIcon.appiconset`；菜单栏与面板字标使用 `Mio/Assets.xcassets/MioMenuBar.imageset`。
 
 ## macOS 26 界面
 

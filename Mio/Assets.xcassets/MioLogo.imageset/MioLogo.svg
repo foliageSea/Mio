@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">02 · 连笔声波 — Mio</title>
+  <desc id="desc">连续曲线连接 M、i、o，把音频的流动感融入字标。</desc>
+  <rect width="512" height="512" rx="112" fill="#fff"/>
+  <g transform="translate(0 -12)"><path d="M106 326V200l48 62 48-62v112c0 39 60 39 60-4v-54m0 54c0 42 50 42 50-2v-28c0-52 88-52 88 0v24c0 53-88 53-88 0" fill="none" stroke="#000" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/><circle cx="262" cy="204" r="14" fill="#000"/></g>
+</svg>
