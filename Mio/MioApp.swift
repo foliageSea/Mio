@@ -2,14 +2,16 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem?
-    private let popover = NSPopover()
+    private let mixerPanel = MixerPanel(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
     private var settingsWindow: NSWindowController?
+    private var mixerController: NSHostingController<AnyView>?
+    private var maximumPanelHeight: CGFloat = .greatestFiniteMagnitude
     private let volumeHUD = VolumeHUD()
     private var anchorTrackingTimer: Timer?
-    private var lastAnchorRect = NSRect.zero
-    private var lastPopoverSize = NSSize.zero
+    private var localEventMonitor: Any?
+    private var outsideClickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -24,16 +26,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.action = #selector(toggleMixer)
         }
         statusItem = item
-        popover.delegate = self
-        popover.behavior = .transient
-        popover.animates = false
-        let mixerController = NSHostingController(rootView:
-            MixerMenuView(onOpenSettings: { [weak self] in self?.showSettings() })
-                .environmentObject(MixerStore.shared)
-        )
+        let mixerController = NSHostingController(rootView: makeMixerContent())
+        self.mixerController = mixerController
         mixerController.sizingOptions = [.preferredContentSize]
-        popover.contentViewController = mixerController
-        popover.contentSize = mixerController.view.fittingSize
+        mixerPanel.contentViewController = mixerController
+        mixerPanel.delegate = self
+        mixerPanel.level = .popUpMenu
+        mixerPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        mixerPanel.isOpaque = false
+        mixerPanel.backgroundColor = .clear
+        mixerPanel.hasShadow = true
+        mixerPanel.isReleasedWhenClosed = false
+        mixerPanel.onDismiss = { [weak self] in self?.closeMixer() }
         ShortcutSettings.shared.onAction = { [weak self] action in
             switch action {
             case .toggleWindow: self?.toggleMixer()
@@ -56,8 +60,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         NSApp.mainMenu = menu
     }
 
+    private func makeMixerContent() -> AnyView {
+        AnyView(
+            MixerMenuView(onOpenSettings: { [weak self] in self?.showSettings() }, maximumHeight: maximumPanelHeight)
+                .environmentObject(MixerStore.shared)
+        )
+    }
+
     @objc private func showSettings() {
-        popover.close()
+        closeMixer()
         if settingsWindow == nil {
             let controller = NSHostingController(rootView: SettingsView(settings: .shared))
             let window = NSWindow(contentViewController: controller)
@@ -74,68 +85,94 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc private func toggleMixer() {
-        if popover.isShown {
-            popover.close()
-        } else if let button = statusItem?.button, button.window != nil {
-            MixerStore.shared.refresh()
-            NSApp.activate(ignoringOtherApps: true)
-            if let contentView = popover.contentViewController?.view {
-                popover.contentSize = contentView.fittingSize
-            }
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
-            // Activation can move the status item to another menu bar after show().
-            DispatchQueue.main.async { [weak self] in
-                self?.synchronizePopoverPosition(force: true)
-            }
+        if mixerPanel.isVisible {
+            closeMixer()
+            return
+        }
+        MixerStore.shared.refresh()
+        guard positionMixerPanel() else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        mixerPanel.makeKeyAndOrderFront(nil)
+        statusItem?.button?.state = .on
+        startPanelMonitoring()
+        // Activation may move the status item to another display's menu bar.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.mixerPanel.isVisible else { return }
+            self.positionMixerPanel()
         }
     }
 
-    func popoverDidShow(_ notification: Notification) {
-        anchorTrackingTimer?.invalidate()
+    @discardableResult
+    private func positionMixerPanel() -> Bool {
+        guard let button = statusItem?.button, let anchorWindow = button.window,
+              anchorWindow.isVisible, let screen = anchorWindow.screen,
+              let contentView = mixerPanel.contentViewController?.view else { return false }
+        let anchor = anchorWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        guard anchor.intersects(screen.frame) else { return false }
+        let bounds = screen.visibleFrame
+        let top = min(anchor.minY, bounds.maxY)
+        let availableHeight = max(0, top - bounds.minY)
+        if abs(maximumPanelHeight - availableHeight) > 0.5 {
+            maximumPanelHeight = availableHeight
+            mixerController?.rootView = makeMixerContent()
+            contentView.layoutSubtreeIfNeeded()
+        }
+        let size = contentView.fittingSize
+        guard size.width > 0, size.height > 0, availableHeight > 0 else { return false }
+        let height = min(size.height, availableHeight)
+        let x = max(bounds.minX + 4, min(anchor.midX - size.width / 2, bounds.maxX - size.width - 4))
+        let frame = NSRect(x: x, y: top - height, width: size.width, height: height)
+        if mixerPanel.frame != frame { mixerPanel.setFrame(frame, display: true) }
+        return true
+    }
+
+    private func startPanelMonitoring() {
+        stopPanelMonitoring()
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.synchronizePopoverPosition() }
+            MainActor.assumeIsolated {
+                guard let self, self.mixerPanel.isVisible else { return }
+                if !self.positionMixerPanel() { self.closeMixer() }
+            }
         }
         anchorTrackingTimer = timer
         RunLoop.main.add(timer, forMode: .common)
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown]) { [weak self] event in
+            guard let self, self.mixerPanel.isVisible else { return event }
+            if event.type == .keyDown {
+                if event.window === self.mixerPanel && event.keyCode == 53 {
+                    self.closeMixer()
+                    return nil
+                }
+            } else if event.window !== self.mixerPanel && event.window !== self.statusItem?.button?.window {
+                self.closeMixer()
+            }
+            return event
+        }
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+            self?.closeMixer()
+        }
     }
 
-    func popoverDidClose(_ notification: Notification) {
+    private func stopPanelMonitoring() {
         anchorTrackingTimer?.invalidate()
         anchorTrackingTimer = nil
-        lastAnchorRect = .zero
-        lastPopoverSize = .zero
+        if let localEventMonitor { NSEvent.removeMonitor(localEventMonitor) }
+        localEventMonitor = nil
+        if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
+        outsideClickMonitor = nil
     }
 
-    private func synchronizePopoverPosition(force: Bool = false) {
-        guard popover.isShown, let button = statusItem?.button,
-              let anchorWindow = button.window, anchorWindow.isVisible,
-              let screen = anchorWindow.screen,
-              let window = popover.contentViewController?.view.window else { return }
-        let anchor = anchorWindow.convertToScreen(button.convert(button.bounds, to: nil))
-        guard anchor.intersects(screen.frame) else { return }
-        let contentSize = popover.contentViewController!.view.fittingSize
-        let sizeChanged = contentSize != popover.contentSize
-        if sizeChanged && contentSize.width > 0 && contentSize.height > 0 {
-            popover.contentSize = contentSize
-        }
-        let gap = anchor.minY - window.frame.maxY
-        guard force || sizeChanged || anchor != lastAnchorRect || window.frame.size != lastPopoverSize || gap > 24 || gap < -4 else { return }
-
-        // Reattach to the current view, which AppKit may replace during activation
-        // or a display change. Resizing the SwiftUI content also needs a new anchor.
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        let frame = window.frame
-        let updatedGap = anchor.minY - frame.maxY
-        let y = updatedGap > 24 || updatedGap < -4 ? anchor.minY - frame.height - 2 : frame.minY
-        // Preserve AppKit’s horizontal origin: it accounts for the chevron and
-        // screen-edge clamping. Centering the outer window would offset the arrow.
-        if abs(frame.minY - y) > 2 {
-            window.setFrameOrigin(NSPoint(x: frame.minX, y: y))
-        }
-        lastAnchorRect = anchor
-        lastPopoverSize = window.frame.size
+    private func closeMixer() {
+        stopPanelMonitoring()
+        mixerPanel.orderOut(nil)
+        statusItem?.button?.state = .off
     }
+
+    func windowDidResignKey(_ notification: Notification) {
+        if notification.object as? NSWindow === mixerPanel { closeMixer() }
+    }
+
+    func applicationDidResignActive(_ notification: Notification) { closeMixer() }
 
     private func adjustGlobalVolume(direction: Double) {
         do {
@@ -147,12 +184,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        anchorTrackingTimer?.invalidate()
+        closeMixer()
         ShortcutSettings.shared.stop()
         MixerStore.shared.shutdown()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+}
+
+final class MixerPanel: NSPanel {
+    var onDismiss: (() -> Void)?
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+
+    override func cancelOperation(_ sender: Any?) { onDismiss?() }
 }
 
 @main

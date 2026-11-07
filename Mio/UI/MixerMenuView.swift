@@ -4,6 +4,7 @@ import SwiftUI
 struct MixerMenuView: View {
     @EnvironmentObject private var store: MixerStore
     var onOpenSettings: () -> Void = {}
+    var maximumHeight: CGFloat = .greatestFiniteMagnitude
     @State private var selection = MixerKeyboardSelection()
 
     var body: some View {
@@ -81,8 +82,13 @@ struct MixerMenuView: View {
         return true
     }
 
+    private var bodyHeightBudget: CGFloat {
+        // Reserve the header/footer and a bounded error banner before sizing the list.
+        max(0, maximumHeight - (store.errorMessage == nil ? 96 : 180))
+    }
+
     private var processListHeight: CGFloat {
-        min(CGFloat(store.processes.count) * 62 + 12, 380)
+        min(CGFloat(store.processes.count) * 62 + 12, 380, bodyHeightBudget)
     }
 
     private var header: some View {
@@ -136,7 +142,7 @@ struct MixerMenuView: View {
             Text("暂无音频应用")
                 .font(.callout.weight(.medium))
         }
-        .frame(maxWidth: .infinity, minHeight: 168)
+        .frame(maxWidth: .infinity, minHeight: min(168, max(0, bodyHeightBudget - 32)))
         .padding(16)
     }
 
@@ -146,6 +152,8 @@ struct MixerMenuView: View {
                 .foregroundStyle(.orange)
             Text(message)
                 .font(.caption)
+                .lineLimit(3)
+                .help(message)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             MioIconButton(action: { store.dismissError() }) {
