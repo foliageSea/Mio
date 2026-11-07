@@ -1,0 +1,316 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C00000000000000000000001 /* MioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* MioApp.swift */; };
+		C00000000000000000000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000002 /* Models.swift */; };
+		C00000000000000000000003 /* MixerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000003 /* MixerStore.swift */; };
+		C00000000000000000000004 /* CoreAudioHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000004 /* CoreAudioHelpers.swift */; };
+		C00000000000000000000005 /* AudioProcessDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000005 /* AudioProcessDiscovery.swift */; };
+		C00000000000000000000006 /* AppAudioPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000006 /* AppAudioPipeline.swift */; };
+		C00000000000000000000007 /* AudioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000007 /* AudioController.swift */; };
+		C00000000000000000000008 /* MixerMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000008 /* MixerMenuView.swift */; };
+		C00000000000000000000009 /* AtomicAudio.c in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000009 /* AtomicAudio.c */; };
+		C0000000000000000000000A /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0000000000000000000000E /* CoreAudio.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B00000000000000000000001 /* MioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MioApp.swift; sourceTree = "<group>"; };
+		B00000000000000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B00000000000000000000003 /* MixerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerStore.swift; sourceTree = "<group>"; };
+		B00000000000000000000004 /* CoreAudioHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioHelpers.swift; sourceTree = "<group>"; };
+		B00000000000000000000005 /* AudioProcessDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessDiscovery.swift; sourceTree = "<group>"; };
+		B00000000000000000000006 /* AppAudioPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAudioPipeline.swift; sourceTree = "<group>"; };
+		B00000000000000000000007 /* AudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioController.swift; sourceTree = "<group>"; };
+		B00000000000000000000008 /* MixerMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerMenuView.swift; sourceTree = "<group>"; };
+		B00000000000000000000009 /* AtomicAudio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = AtomicAudio.c; sourceTree = "<group>"; };
+		B0000000000000000000000A /* AtomicAudio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtomicAudio.h; sourceTree = "<group>"; };
+		B0000000000000000000000B /* Mio-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Mio-Bridging-Header.h"; sourceTree = "<group>"; };
+		B0000000000000000000000C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B0000000000000000000000D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		B0000000000000000000000E /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
+		B0000000000000000000000F /* Mio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D00000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0000000000000000000000A /* CoreAudio.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000003 /* Mio */,
+				B0000000000000000000000D /* README.md */,
+				A00000000000000000000006 /* Frameworks */,
+				A00000000000000000000005 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000003 /* Mio */ = {
+			isa = PBXGroup;
+			children = (
+				B00000000000000000000001 /* MioApp.swift */,
+				B00000000000000000000002 /* Models.swift */,
+				B00000000000000000000003 /* MixerStore.swift */,
+				A00000000000000000000004 /* Audio */,
+				A00000000000000000000007 /* UI */,
+				B0000000000000000000000B /* Mio-Bridging-Header.h */,
+				B0000000000000000000000C /* Info.plist */,
+			);
+			path = Mio;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000004 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				B00000000000000000000004 /* CoreAudioHelpers.swift */,
+				B00000000000000000000005 /* AudioProcessDiscovery.swift */,
+				B00000000000000000000006 /* AppAudioPipeline.swift */,
+				B00000000000000000000007 /* AudioController.swift */,
+				B00000000000000000000009 /* AtomicAudio.c */,
+				B0000000000000000000000A /* AtomicAudio.h */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B0000000000000000000000F /* Mio.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000006 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B0000000000000000000000E /* CoreAudio.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000007 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				B00000000000000000000008 /* MixerMenuView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E00000000000000000000001 /* Mio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F00000000000000000000005 /* Build configuration list for PBXNativeTarget "Mio" */;
+			buildPhases = (
+				D00000000000000000000001 /* Sources */,
+				D00000000000000000000002 /* Frameworks */,
+				D00000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Mio;
+			productName = Mio;
+			productReference = B0000000000000000000000F /* Mio.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1510;
+				LastUpgradeCheck = 1510;
+				TargetAttributes = {
+					E00000000000000000000001 = {
+						CreatedOnToolsVersion = 15.1;
+					};
+				};
+			};
+			buildConfigurationList = F00000000000000000000006 /* Build configuration list for PBXProject "Mio" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = A00000000000000000000002;
+			productRefGroup = A00000000000000000000005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E00000000000000000000001 /* Mio */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D00000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D00000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C00000000000000000000001 /* MioApp.swift in Sources */,
+				C00000000000000000000002 /* Models.swift in Sources */,
+				C00000000000000000000003 /* MixerStore.swift in Sources */,
+				C00000000000000000000004 /* CoreAudioHelpers.swift in Sources */,
+				C00000000000000000000005 /* AudioProcessDiscovery.swift in Sources */,
+				C00000000000000000000006 /* AppAudioPipeline.swift in Sources */,
+				C00000000000000000000007 /* AudioController.swift in Sources */,
+				C00000000000000000000008 /* MixerMenuView.swift in Sources */,
+				C00000000000000000000009 /* AtomicAudio.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		F00000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		F00000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+		};
+			name = Release;
+		};
+		F00000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Mio/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foliage.Mio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Mio/Mio-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F00000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Mio/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foliage.Mio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Mio/Mio-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F00000000000000000000005 /* Build configuration list for PBXNativeTarget "Mio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F00000000000000000000003 /* Debug */,
+				F00000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F00000000000000000000006 /* Build configuration list for PBXProject "Mio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F00000000000000000000001 /* Debug */,
+				F00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000000000001 /* Project object */;
+}

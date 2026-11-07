@@ -1,0 +1,334 @@
+import AppKit
+import SwiftUI
+
+struct MixerMenuView: View {
+    @EnvironmentObject private var store: MixerStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            sectionDivider
+
+            if store.processes.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 2) {
+                        ForEach(store.processes) { process in
+                            ProcessVolumeRow(process: process)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                }
+                // A ScrollView has no intrinsic height. MenuBarExtra may therefore
+                // collapse it to zero even though it contains process rows.
+                .frame(height: processListHeight)
+            }
+
+            if let error = store.errorMessage {
+                sectionDivider
+                errorBanner(error)
+            }
+
+            sectionDivider
+            footer
+        }
+        .frame(width: 360)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.1))
+        }
+    }
+
+    private var processListHeight: CGFloat {
+        min(CGFloat(store.processes.count) * 62 + 12, 380)
+    }
+
+    private var header: some View {
+        MioGlassContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.16))
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                }
+                .frame(width: 34, height: 34)
+                .mioGlassBadge(in: Circle())
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Mio")
+                        .font(.headline)
+                    Text("按应用调节音量")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(store.processes.isEmpty ? Color.secondary : Color.green)
+                        .frame(width: 6, height: 6)
+                    Text("\(store.processes.count)")
+                        .font(.caption.monospacedDigit().weight(.medium))
+                }
+                .padding(.horizontal, 9)
+                .frame(height: 28)
+                .mioGlassBadge(in: Capsule())
+
+                MioGlassButton(action: { store.refresh() }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .help("刷新应用列表")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color.secondary.opacity(0.1))
+                Image(systemName: "speaker.slash.fill")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 46, height: 46)
+            .mioGlassBadge(in: Circle())
+
+            VStack(spacing: 3) {
+                Text("暂无音频应用")
+                    .font(.callout.weight(.medium))
+                Text("开始播放后会自动显示")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 168)
+        .padding(16)
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            MioGlassButton(action: { store.dismissError() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .frame(width: 22, height: 22)
+            }
+            .help("关闭")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.orange.opacity(0.08))
+    }
+
+    private var footer: some View {
+        MioGlassContainer(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Text("音频仅在本机处理")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                MioGlassButton(tint: .red) {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Image(systemName: "power")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .help("退出 Mio")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var sectionDivider: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(height: 1)
+    }
+}
+
+private struct ProcessVolumeRow: View {
+    @EnvironmentObject private var store: MixerStore
+    @State private var isHovered = false
+
+    let process: AudioProcessInfo
+
+    private var control: SavedControl {
+        store.control(for: process)
+    }
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(nsImage: process.icon)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(process.name)
+                        .font(.callout.weight(.medium))
+                        .lineLimit(1)
+                    Spacer()
+                    Text(control.isMuted ? "静音" : "\(Int(control.volume * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(control.isMuted ? Color.orange : Color.secondary)
+                        .frame(width: 42, alignment: .trailing)
+                }
+
+                Slider(
+                    value: Binding(
+                        get: { Double(control.volume) },
+                        set: { store.setVolume($0, for: process) }
+                    ),
+                    in: 0 ... 1
+                )
+                .disabled(control.isMuted)
+                .tint(control.isMuted ? .secondary : .accentColor)
+            }
+
+            MioGlassButton(tint: control.isMuted ? .orange : nil) {
+                store.toggleMute(for: process)
+            } label: {
+                Image(systemName: control.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(control.isMuted ? Color.orange : Color.primary)
+                    .frame(width: 30, height: 30)
+            }
+            .help(control.isMuted ? "取消静音" : "静音")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 9)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(isHovered ? 0.055 : 0))
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .onHover { isHovered = $0 }
+    }
+}
+
+private struct MioGlassButton<Label: View>: View {
+    let tint: Color?
+    let action: () -> Void
+    @ViewBuilder let label: () -> Label
+
+    init(
+        tint: Color? = nil,
+        action: @escaping () -> Void,
+        @ViewBuilder label: @escaping () -> Label
+    ) {
+        self.tint = tint
+        self.action = action
+        self.label = label
+    }
+
+    var body: some View {
+#if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            if let tint {
+                Button(action: action, label: label)
+                    .buttonStyle(.glass(.regular.tint(tint)))
+            } else {
+                Button(action: action, label: label)
+                    .buttonStyle(.glass)
+            }
+        } else {
+            legacyButton
+        }
+#else
+        legacyButton
+#endif
+    }
+
+    private var legacyButton: some View {
+        Button(action: action, label: label)
+            .buttonStyle(LegacyGlassButtonStyle(tint: tint))
+    }
+}
+
+private struct LegacyGlassButtonStyle: ButtonStyle {
+    let tint: Color?
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                (tint ?? Color.primary)
+                    .opacity(configuration.isPressed ? 0.16 : 0.08),
+                in: Circle()
+            )
+            .background(.regularMaterial, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(Color.white.opacity(configuration.isPressed ? 0.08 : 0.2))
+            }
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+private struct MioGlassContainer<Content: View>: View {
+    let spacing: CGFloat
+    @ViewBuilder let content: () -> Content
+
+    init(spacing: CGFloat, @ViewBuilder content: @escaping () -> Content) {
+        self.spacing = spacing
+        self.content = content
+    }
+
+    var body: some View {
+#if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing, content: content)
+        } else {
+            content()
+        }
+#else
+        content()
+#endif
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func mioGlassBadge<S: InsettableShape>(in shape: S) -> some View {
+#if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            glassEffect(.regular, in: shape)
+        } else {
+            legacyGlassBadge(in: shape)
+        }
+#else
+        legacyGlassBadge(in: shape)
+#endif
+    }
+
+    func legacyGlassBadge<S: InsettableShape>(in shape: S) -> some View {
+        background(.regularMaterial, in: shape)
+            .overlay {
+                shape.strokeBorder(Color.white.opacity(0.2))
+            }
+    }
+}
