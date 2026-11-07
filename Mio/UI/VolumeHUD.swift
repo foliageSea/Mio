@@ -23,7 +23,7 @@ final class VolumeHUD {
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
             panel.isOpaque = false
             panel.backgroundColor = .clear
-            panel.hasShadow = true
+            panel.hasShadow = false
             panel.ignoresMouseEvents = true
             panel.hidesOnDeactivate = false
             self.panel = panel
@@ -65,11 +65,31 @@ private struct VolumeHUDView: View {
         }
         .padding(.horizontal, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20)
-                .strokeBorder(.primary.opacity(0.08))
-        }
+        .modifier(VolumeHUDMaterial())
         .padding(1)
+    }
+}
+
+private struct VolumeHUDMaterial: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+#if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                // Trim the native dark keyline without replacing the glass material.
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous).inset(by: 1))
+        } else {
+            legacyMaterial(content)
+        }
+#else
+        legacyMaterial(content)
+#endif
+    }
+
+    private func legacyMaterial(_ content: Content) -> some View {
+        content
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
     }
 }
