@@ -82,7 +82,7 @@ struct MixerMenuView: View {
                 .frame(height: 28)
                 .mioGlassBadge(in: Capsule())
 
-                MioGlassButton(action: { store.refresh() }) {
+                MioIconButton(action: { store.refresh() }) {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 13, weight: .semibold))
                         .frame(width: 28, height: 28)
@@ -126,7 +126,7 @@ struct MixerMenuView: View {
                 .font(.caption)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
-            MioGlassButton(action: { store.dismissError() }) {
+            MioIconButton(action: { store.dismissError() }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
                     .frame(width: 22, height: 22)
@@ -148,7 +148,7 @@ struct MixerMenuView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-                MioGlassButton(tint: .red) {
+                MioIconButton(tint: .red) {
                     NSApplication.shared.terminate(nil)
                 } label: {
                     Image(systemName: "power")
@@ -209,7 +209,7 @@ private struct ProcessVolumeRow: View {
                 .tint(control.isMuted ? .secondary : .accentColor)
             }
 
-            MioGlassButton(tint: control.isMuted ? .orange : nil) {
+            MioIconButton(tint: control.isMuted ? .orange : nil) {
                 store.toggleMute(for: process)
             } label: {
                 Image(systemName: control.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
@@ -230,10 +230,11 @@ private struct ProcessVolumeRow: View {
     }
 }
 
-private struct MioGlassButton<Label: View>: View {
+private struct MioIconButton<Label: View>: View {
     let tint: Color?
     let action: () -> Void
     @ViewBuilder let label: () -> Label
+    @State private var isHovered = false
 
     init(
         tint: Color? = nil,
@@ -246,46 +247,32 @@ private struct MioGlassButton<Label: View>: View {
     }
 
     var body: some View {
-#if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            if let tint {
-                Button(action: action, label: label)
-                    .buttonStyle(.glass(.regular.tint(tint)))
-            } else {
-                Button(action: action, label: label)
-                    .buttonStyle(.glass)
-            }
-        } else {
-            legacyButton
-        }
-#else
-        legacyButton
-#endif
-    }
-
-    private var legacyButton: some View {
         Button(action: action, label: label)
-            .buttonStyle(LegacyGlassButtonStyle(tint: tint))
+            .buttonStyle(MioIconButtonStyle(tint: tint, isHovered: isHovered))
+            .onHover { isHovered = $0 }
     }
 }
 
-private struct LegacyGlassButtonStyle: ButtonStyle {
+private struct MioIconButtonStyle: ButtonStyle {
     let tint: Color?
+    let isHovered: Bool
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
+        let color = tint ?? .primary
+
         configuration.label
-            .background(
-                (tint ?? Color.primary)
-                    .opacity(configuration.isPressed ? 0.16 : 0.08),
-                in: Circle()
-            )
-            .background(.regularMaterial, in: Circle())
-            .overlay {
+            .foregroundStyle(isHovered ? color : (tint ?? .secondary))
+            .background {
                 Circle()
-                    .strokeBorder(Color.white.opacity(configuration.isPressed ? 0.08 : 0.2))
+                    .fill(color.opacity(configuration.isPressed ? 0.16 : (isHovered ? 0.09 : 0.04)))
             }
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .contentShape(Circle())
+            .opacity(isEnabled ? 1 : 0.4)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.92 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: isHovered)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 

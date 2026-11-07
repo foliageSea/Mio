@@ -31,7 +31,7 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 
 ## macOS 26 界面
 
-界面已适配 macOS 26 Liquid Glass。使用 Xcode 26 或更高版本构建时，控制按钮、状态徽标和容器会启用原生 `GlassEffectContainer`、`glassEffect` 与 glass button style；使用旧版 Xcode 构建时会自动采用 Material 兼容样式，音频功能保持一致。
+界面已适配 macOS 26 Liquid Glass。使用 Xcode 26 或更高版本构建时，控制按钮、状态徽标和容器会启用原生 `GlassEffectContainer` 与 `glassEffect`，图标按钮采用紧凑圆形样式；使用旧版 Xcode 构建时会自动采用 Material 兼容样式，音频功能保持一致。
 
 ## 当前范围
 
