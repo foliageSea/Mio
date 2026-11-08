@@ -1,0 +1,115 @@
+name: Release macOS installers
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    name: Build and upload universal macOS installers
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+    steps:
+      - name: Check out the released tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - name: Select the latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Resolve and validate the release version
+        id: version
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+
+          tag = os.environ["RELEASE_TAG"]
+          pattern = r"v?((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+          match = re.fullmatch(pattern, tag)
+          if not match:
+              raise SystemExit("Release tag must be a version such as v1.2.3 or v1.2.3-beta.1")
+          version = tag[1:] if tag.startswith("v") else tag
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\napp_version={match.group(1)}\n")
+          print(f"Release: {version}; app/package version: {match.group(1)}")
+          PY
+
+      - name: Build versioned DMG and PKG
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: ./build-installer.sh
+
+      - name: Verify application version, signature and architectures
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          APP="build/Mio.app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" = "$APP_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")" = "$BUILD_NUMBER"
+          MIO_ARCHITECTURES="$(xcrun lipo -archs "$APP/Contents/MacOS/Mio")"
+          [[ " $MIO_ARCHITECTURES " == *" arm64 "* && " $MIO_ARCHITECTURES " == *" x86_64 "* ]]
+          codesign --verify --deep --strict "$APP"
+          test -s "dist/Mio-$VERSION.dmg"
+          test -s "dist/Mio-$VERSION.pkg"
+
+      - name: Generate SHA-256 checksums
+        working-directory: dist
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: shasum -a 256 "Mio-$VERSION.dmg" "Mio-$VERSION.pkg" > "Mio-$VERSION-SHA256SUMS.txt"
+
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Mio-${{ steps.version.outputs.version }}-macos-universal
+          path: |
+            dist/Mio-${{ steps.version.outputs.version }}.dmg
+            dist/Mio-${{ steps.version.outputs.version }}.pkg
+            dist/Mio-${{ steps.version.outputs.version }}-SHA256SUMS.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload installers to the published Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            "dist/Mio-$VERSION.dmg" \
+            "dist/Mio-$VERSION.pkg" \
+            "dist/Mio-$VERSION-SHA256SUMS.txt" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
+      - name: Save build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: Mio-release-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 7

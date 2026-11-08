@@ -33,6 +33,26 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 
 构建日志位于 `build/dev-build.log`，开发构建与安装包脚本使用的 Release 产物分开存放。可使用 `./run-dev.sh --help` 查看用法。
 
+## GitHub Release 自动构建
+
+发布 GitHub Release（包括预发布版本）后，工作流会检出对应标签，在 macOS runner 上使用最新稳定版 Xcode 构建 Apple Silicon + Intel 通用安装包，并上传到该 Release。工作流文件必须已包含在发布标签指向的提交中。
+
+标签支持 `v1.2.3`、`1.2.3` 或 `v1.2.3-beta.1` 等版本格式。例如发布 `v1.2.3` 后，Release 会附带：
+
+- `Mio-1.2.3.dmg`
+- `Mio-1.2.3.pkg`
+- `Mio-1.2.3-SHA256SUMS.txt`
+
+安装包也会保存为 Actions 构建产物，构建失败时保留 Xcode 日志。重新运行同一个 Release 的工作流会覆盖同名附件。应用内版本和 PKG 版本使用标签中的数字版本（例如预发布 `v1.2.3-beta.1` 对应 `1.2.3`），附件文件名保留预发布后缀；应用构建号使用 Actions 的运行编号。
+
+本地可用相同脚本生成带版本号的安装包：
+
+```sh
+VERSION=1.2.3 BUILD_NUMBER=1 ./build-installer.sh
+```
+
+当前自动构建沿用 ad-hoc 应用签名，PKG 未签名，未执行 Apple 公证。工作流使用仓库自带的 `GITHUB_TOKEN` 上传附件，无需额外配置 GitHub 访问令牌。
+
 ## 主窗口键盘操作
 
 打开音量面板后，默认选中首个应用，并以淡色高亮当前选项：
