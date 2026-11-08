@@ -105,9 +105,39 @@ struct SystemVolumeChecks {
         precondition(ignoredRestore.mutes[0] == false)
         let zeroWake = MockVolumeBackend(values: [0: 0.9], mutes: [0: true])
         zeroWake.quantum = 0.1
-        fails(zeroWake, 0.01)
-        precondition(zeroWake.mutes[0] == true)
-        near(zeroWake.values[0]!, 0.9)
+        near(try adjust(zeroWake, 0.01), 0.1)
+        precondition(zeroWake.mutes[0] == false)
+
+        let hardwareStep = MockVolumeBackend(values: [0: 0], mutes: [0: true])
+        hardwareStep.quantum = 1.0 / 64
+        near(try adjust(hardwareStep, 0.01), 1.0 / 64)
+        precondition(hardwareStep.mutes[0] == false)
+        let coarseStep = MockVolumeBackend(values: [0: 0], mutes: [0: true])
+        coarseStep.quantum = 1.0 / 16
+        near(try adjust(coarseStep, 0.005), 1.0 / 16)
+        precondition(coarseStep.mutes[0] == false)
+        let delayed = MockVolumeBackend(values: [0: 0], mutes: [0: true])
+        delayed.staleReadsAfterWrite = 2
+        near(try adjust(delayed, 0.01), 0.01)
+        precondition(delayed.mutes[0] == false && delayed.settleWaits > 0)
+        precondition(delayed.events == ["volume:0", "mute:0:false"])
+        let delayedLoud = MockVolumeBackend(values: [0: 0.9], mutes: [0: true])
+        delayedLoud.staleReadsAfterWrite = 2
+        near(try adjust(delayedLoud, 0.01), 0.01)
+        precondition(delayedLoud.mutes[0] == false)
+        let ignoredZeroRecovery = MockVolumeBackend(values: [0: 0], mutes: [0: true])
+        ignoredZeroRecovery.ignoreVolumeWrites = true
+        fails(ignoredZeroRecovery, 0.005)
+        precondition(ignoredZeroRecovery.mutes[0] == true && ignoredZeroRecovery.events.count < 20)
+        let excessiveStep = MockVolumeBackend(values: [0: 0.75], mutes: [0: true])
+        excessiveStep.quantum = 0.25
+        fails(excessiveStep, 0.01)
+        precondition(excessiveStep.mutes[0] == true)
+        near(excessiveStep.values[0]!, 0.75)
+        let resetOnUnmute = MockVolumeBackend(values: [0: 0.9], mutes: [0: true])
+        resetOnUnmute.resetLevelOnUnmute = 0.8
+        fails(resetOnUnmute, 0.01)
+        precondition(resetOnUnmute.mutes[0] == true)
 
         let balanced = MockVolumeBackend(values: [1: 0.2, 2: 0.8])
         near(try adjust(balanced, 0.4), 1)
@@ -234,6 +264,11 @@ private final class MockVolumeBackend: SystemVolumeBackend {
     var failReadAfterWrite = false
     var ignoreVolumeWrites = false
     var quantum: Float?
+    var staleReadsAfterWrite = 0
+    var staleValues: [UInt32: (Float, Int)] = [:]
+    var settleWaits = 0
+    var resetLevelOnUnmute: Float?
+    func waitForVolumeUpdate() { settleWaits += 1 }
     var defaultReads = 0
     var events: [String] = []
 
@@ -258,10 +293,15 @@ private final class MockVolumeBackend: SystemVolumeBackend {
             throw CoreAudioError.missingValue("mock readback")
         }
         if failedRead == element { throw CoreAudioError.missingValue("mock read") }
+        if let (value, remaining) = staleValues[element], remaining > 0 {
+            staleValues[element] = (value, remaining - 1)
+            return value
+        }
         return values[element]!
     }
     func setScalar(_ device: AudioObjectID, _ element: AudioObjectPropertyElement, _ value: Float) throws {
         events.append("volume:\(element)")
+        if staleReadsAfterWrite > 0 { staleValues[element] = (values[element]!, staleReadsAfterWrite) }
         if !ignoreVolumeWrites {
             values[element] = quantum.map { (value / $0).rounded() * $0 } ?? value
         }
@@ -277,6 +317,9 @@ private final class MockVolumeBackend: SystemVolumeBackend {
         if value && failRemute { throw CoreAudioError.missingValue("mock restore mute") }
         if ignoreMuteWrites || (value && ignoreRemute) { return }
         mutes[element] = value
+        if !value, let level = resetLevelOnUnmute {
+            for channel in values.keys { values[channel] = level }
+        }
         if value && failMuteOnce {
             failMuteOnce = false
             throw CoreAudioError.missingValue("mock mute")

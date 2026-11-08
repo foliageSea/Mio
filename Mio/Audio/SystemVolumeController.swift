@@ -91,9 +91,15 @@ enum SystemVolumeController {
         let plannedMutes = shouldMute ? try writableMuteIndices() : []
         // Scale channels together to retain their relative balance and still allow
         // the entire output to reach zero when one channel is already silent.
-        let targets = original.map { value in
-            Float(min(1, max(0, currentLevel > 0 ? Double(value) / currentLevel * targetLevel : targetLevel)))
+        func balancedTargets(at level: Double) -> [Float] {
+            original.map { value in
+                Float(min(1, max(0, currentLevel > 0 ? Double(value) / currentLevel * level : level)))
+            }
         }
+        let targets = balancedTargets(at: targetLevel)
+        // Hardware steps may exceed the configured fine step. Permit a low recovery
+        // level up to 10%, while still rejecting an ignored write at a loud old level.
+        let recoveryCeiling = Float(max(0.1, targetLevel))
 
         var attemptedVolumes: [Int] = []
         var attemptedMutes: [Int] = []
@@ -103,10 +109,31 @@ enum SystemVolumeController {
                 try backend.setScalar(device, elements[index], targets[index])
             }
             if wasMuted {
-                // Read back before unmuting: a driver may quantize or ignore scalar writes.
-                let staged = try elements.map { try checkedScalar(backend.scalar(device, $0)) }
-                let ceiling = Float(min(1, max(0, delta)))
-                guard staged.contains(where: { $0 > 0 }), staged.allSatisfy({ $0 <= ceiling + 0.0001 }) else {
+                func stagedLevels() throws -> [Float] {
+                    var levels = try elements.map { try checkedScalar(backend.scalar(device, $0)) }
+                    // Bluetooth drivers may briefly return the previous value after a write.
+                    for _ in 0..<3 {
+                        if levels.contains(where: { $0 > 0 }) && levels.allSatisfy({ $0 <= recoveryCeiling + 0.0001 }) { break }
+                        backend.waitForVolumeUpdate()
+                        levels = try elements.map { try checkedScalar(backend.scalar(device, $0)) }
+                    }
+                    return levels
+                }
+                var staged = try stagedLevels()
+                var requested = targetLevel
+                while !staged.contains(where: { $0 > 0 }) {
+                    // Find an audible hardware step when a fine software step rounds to zero.
+                    let next = min(Double(recoveryCeiling), max(0.005, requested * 2))
+                    guard next > requested else { throw SystemVolumeError.cannotSetSafeLevel }
+                    requested = next
+                    let retryTargets = balancedTargets(at: requested)
+                    for index in elements.indices {
+                        if !attemptedVolumes.contains(index) { attemptedVolumes.append(index) }
+                        try backend.setScalar(device, elements[index], retryTargets[index])
+                    }
+                    staged = try stagedLevels()
+                }
+                guard staged.allSatisfy({ $0 <= recoveryCeiling + 0.0001 }) else {
                     throw SystemVolumeError.cannotSetSafeLevel
                 }
                 for index in mutesToDisable {
@@ -120,6 +147,9 @@ enum SystemVolumeController {
             if wasMuted {
                 guard !globallyMuted(muted), mutesToDisable.allSatisfy({ !muted[$0] }) else {
                     throw SystemVolumeError.cannotUnmute
+                }
+                guard actualLevel > 0, actualLevel <= recoveryCeiling + 0.0001 else {
+                    throw SystemVolumeError.cannotSetSafeLevel
                 }
             }
             if shouldMute || (delta < 0 && actualLevel == 0) {
@@ -210,9 +240,16 @@ protocol SystemVolumeBackend {
     func setScalar(_ device: AudioObjectID, _ element: AudioObjectPropertyElement, _ value: Float) throws
     func isMuted(_ device: AudioObjectID, _ element: AudioObjectPropertyElement) throws -> Bool
     func setMuted(_ device: AudioObjectID, _ element: AudioObjectPropertyElement, _ value: Bool) throws
+    func waitForVolumeUpdate()
+}
+
+extension SystemVolumeBackend {
+    func waitForVolumeUpdate() {}
 }
 
 private struct CoreAudioVolumeBackend: SystemVolumeBackend {
+    func waitForVolumeUpdate() { Thread.sleep(forTimeInterval: 0.02) }
+
     func defaultOutputDevice() throws -> AudioObjectID {
         try CoreAudioSystem.defaultOutputDevice()
     }
