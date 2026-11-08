@@ -66,6 +66,10 @@ final class ShortcutSettings: ObservableObject {
     private let defaults: UserDefaults
     private var hotKeys: [ShortcutAction: EventHotKeyRef] = [:]
     private var handler: EventHandlerRef?
+    private var heldActions: Set<ShortcutAction> = []
+    private var repeatingAction: ShortcutAction?
+    private var repeatTimer: Timer?
+    private var sessionObservers: [NSObjectProtocol] = []
     private let signature: OSType = 0x4D696F48
 
     init(defaults: UserDefaults = .standard) {
@@ -91,25 +95,73 @@ final class ShortcutSettings: ObservableObject {
 
     func start() {
         guard handler == nil else { return }
-        var event = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, context in
-            guard let context, let event else { return OSStatus(eventNotHandledErr) }
-            let settings = Unmanaged<ShortcutSettings>.fromOpaque(context).takeUnretainedValue()
-            var identifier = EventHotKeyID()
-            let status = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &identifier)
-            guard status == noErr, identifier.signature == settings.signature,
-                  let action = ShortcutAction(rawValue: identifier.id),
-                  settings.hotKeys[action] != nil, !settings.isRecording else {
-                return OSStatus(eventNotHandledErr)
-            }
-            settings.onAction?(action)
-            return noErr
-        }, 1, &event, Unmanaged.passUnretained(self).toOpaque(), &handler)
+        let events = [
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))
+        ]
+        let status = events.withUnsafeBufferPointer { eventTypes in
+            InstallEventHandler(GetApplicationEventTarget(), { _, event, context in
+                guard let context, let event else { return OSStatus(eventNotHandledErr) }
+                let settings = Unmanaged<ShortcutSettings>.fromOpaque(context).takeUnretainedValue()
+                var identifier = EventHotKeyID()
+                let status = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &identifier)
+                guard status == noErr, identifier.signature == settings.signature,
+                      let action = ShortcutAction(rawValue: identifier.id),
+                      settings.hotKeys[action] != nil, !settings.isRecording else {
+                    return OSStatus(eventNotHandledErr)
+                }
+                settings.handleHotKey(action, pressed: GetEventKind(event) == UInt32(kEventHotKeyPressed))
+                return noErr
+            }, eventTypes.count, eventTypes.baseAddress, Unmanaged.passUnretained(self).toOpaque(), &handler)
+        }
         guard status == noErr else {
             errorMessage = "无法启用全局快捷键（\(status)）"
             return
         }
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
+            sessionObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.cancelHeldActions()
+            })
+        }
         registerCurrent()
+    }
+
+    private func handleHotKey(_ action: ShortcutAction, pressed: Bool) {
+        if !pressed {
+            heldActions.remove(action)
+            if repeatingAction == action { stopRepeating() }
+            return
+        }
+        // Carbon may deliver repeated pressed events; our timer owns the repeat cadence.
+        guard heldActions.insert(action).inserted else { return }
+        if action != .toggleWindow { stopRepeating() }
+        onAction?(action)
+        guard action != .toggleWindow, heldActions.contains(action),
+              hotKeys[action] != nil, !isRecording else { return }
+        repeatingAction = action
+        let timer = Timer(timeInterval: 0.08, repeats: true) { [weak self] timer in
+            guard let self, self.repeatingAction == action, self.heldActions.contains(action),
+                  self.hotKeys[action] != nil, !self.isRecording else {
+                timer.invalidate()
+                return
+            }
+            self.onAction?(action)
+        }
+        timer.fireDate = Date(timeIntervalSinceNow: 0.35)
+        repeatTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopRepeating() {
+        repeatTimer?.invalidate()
+        repeatTimer = nil
+        repeatingAction = nil
+    }
+
+    private func cancelHeldActions() {
+        stopRepeating()
+        heldActions.removeAll()
     }
 
     func stop() {
@@ -117,6 +169,8 @@ final class ShortcutSettings: ObservableObject {
         unregister()
         if let handler { RemoveEventHandler(handler) }
         handler = nil
+        for observer in sessionObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
+        sessionObservers.removeAll()
     }
 
     func beginRecording(_ action: ShortcutAction = .toggleWindow) {
@@ -203,6 +257,7 @@ final class ShortcutSettings: ObservableObject {
     }
 
     private func unregister() {
+        cancelHeldActions()
         for reference in hotKeys.values { UnregisterEventHotKey(reference) }
         hotKeys.removeAll()
     }
