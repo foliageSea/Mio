@@ -3,6 +3,8 @@ import Foundation
 
 /// Controls the current default output, independent of per-application gain.
 enum SystemVolumeController {
+    private static let zeroTolerance = 0.000001
+
     static func adjust(by delta: Double) throws -> Float {
         try adjust(by: delta, backend: CoreAudioVolumeBackend())
     }
@@ -45,14 +47,48 @@ enum SystemVolumeController {
         // Volume-down while muted must not expose the remembered (possibly loud) level.
         if wasMuted && delta <= 0 { return 0 }
         if delta == 0 { return original.max() ?? 0 }
-        for (index, element) in muteElements.enumerated() where wasMuted && originalMutes[index] {
-            guard try backend.isSettable(device, mute, element) else {
-                throw SystemVolumeError.cannotUnmute
+        var mutesToDisable: [Int] = []
+        if wasMuted {
+            var expected = originalMutes
+            for (index, element) in muteElements.enumerated() where originalMutes[index] {
+                if try backend.isSettable(device, mute, element) {
+                    mutesToDisable.append(index)
+                    expected[index] = false
+                } else if element == main {
+                    throw SystemVolumeError.cannotUnmute
+                }
             }
+            // Preserve locked partial-channel mutes if other channels can become audible.
+            guard !globallyMuted(expected) else { throw SystemVolumeError.cannotUnmute }
         }
 
         let currentLevel = Double(original.max() ?? 0)
-        let targetLevel = min(1, max(0, (wasMuted ? 0 : currentLevel) + delta))
+        let candidateLevel = min(1, max(0, (wasMuted ? 0 : currentLevel) + delta))
+        // Snap only downward arithmetic residue, not intentionally small positive volume.
+        let targetLevel = delta < 0 && candidateLevel <= zeroTolerance ? 0 : candidateLevel
+        let shouldMute = delta < 0 && targetLevel == 0
+        func writableMuteIndices() throws -> [Int] {
+            guard !muteElements.isEmpty else { return [] }
+            if let index = muteElements.firstIndex(of: main), try backend.isSettable(device, mute, main) {
+                return [index]
+            }
+            // A read-only main mute may still have writable per-channel controls.
+            guard channelCount > 0 else { throw SystemVolumeError.cannotMute }
+            var indices: [Int] = []
+            for channel in 1...channelCount {
+                guard let index = muteElements.firstIndex(of: channel) else {
+                    throw SystemVolumeError.cannotMute
+                }
+                if !originalMutes[index] {
+                    guard try backend.isSettable(device, mute, channel) else {
+                        throw SystemVolumeError.cannotMute
+                    }
+                    indices.append(index)
+                }
+            }
+            return indices
+        }
+        let plannedMutes = shouldMute ? try writableMuteIndices() : []
         // Scale channels together to retain their relative balance and still allow
         // the entire output to reach zero when one channel is already silent.
         let targets = original.map { value in
@@ -70,17 +106,36 @@ enum SystemVolumeController {
                 // Read back before unmuting: a driver may quantize or ignore scalar writes.
                 let staged = try elements.map { try checkedScalar(backend.scalar(device, $0)) }
                 let ceiling = Float(min(1, max(0, delta)))
-                guard staged.allSatisfy({ $0 <= ceiling + 0.0001 }) else {
+                guard staged.contains(where: { $0 > 0 }), staged.allSatisfy({ $0 <= ceiling + 0.0001 }) else {
                     throw SystemVolumeError.cannotSetSafeLevel
                 }
-                for index in muteElements.indices where originalMutes[index] {
+                for index in mutesToDisable {
                     attemptedMutes.append(index)
                     try backend.setMuted(device, muteElements[index], false)
                 }
             }
             let actual = try elements.map { try checkedScalar(backend.scalar(device, $0)) }
-            let muted = try muteElements.map { try backend.isMuted(device, $0) }
-            return globallyMuted(muted) ? 0 : (actual.max() ?? 0)
+            var muted = try muteElements.map { try backend.isMuted(device, $0) }
+            let actualLevel = actual.max() ?? 0
+            if wasMuted {
+                guard !globallyMuted(muted), mutesToDisable.allSatisfy({ !muted[$0] }) else {
+                    throw SystemVolumeError.cannotUnmute
+                }
+            }
+            if shouldMute || (delta < 0 && actualLevel == 0) {
+                // Also cover a driver rounding a positive requested level down to zero.
+                let indices = shouldMute ? plannedMutes : try writableMuteIndices()
+                for index in indices where !muted[index] {
+                    attemptedMutes.append(index)
+                    try backend.setMuted(device, muteElements[index], true)
+                }
+                muted = try muteElements.map { try backend.isMuted(device, $0) }
+                if !globallyMuted(muted) {
+                    guard muteElements.isEmpty else { throw SystemVolumeError.cannotMute }
+                    guard actualLevel == 0 else { throw SystemVolumeError.cannotSetZeroLevel }
+                }
+            }
+            return globallyMuted(muted) ? 0 : actualLevel
         } catch {
             // Core Audio has no multi-property transaction. Restore mute first so a
             // failed unmute cannot expose the previous louder scalar during rollback.
@@ -89,6 +144,13 @@ enum SystemVolumeController {
                 do { try backend.setMuted(device, muteElements[index], originalMutes[index]) }
                 catch { rollbackFailed = true }
             }
+            // A successful write may still have been ignored by the device.
+            do {
+                let restored = try muteElements.map { try backend.isMuted(device, $0) }
+                if attemptedMutes.contains(where: { restored[$0] != originalMutes[$0] }) || (wasMuted && !globallyMuted(restored)) {
+                    rollbackFailed = true
+                }
+            } catch { rollbackFailed = true }
             // If re-muting failed, leave the safer staged level in place.
             if !rollbackFailed {
                 for index in attemptedVolumes.reversed() {
@@ -112,6 +174,8 @@ enum SystemVolumeController {
 enum SystemVolumeError: LocalizedError {
     case fixedVolume
     case cannotUnmute
+    case cannotMute
+    case cannotSetZeroLevel
     case cannotSetSafeLevel
     case invalidDelta
     case incompleteRestore(String)
@@ -120,6 +184,10 @@ enum SystemVolumeError: LocalizedError {
         switch self {
         case .fixedVolume:
             return "当前输出设备不支持系统音量调节。请使用设备上的音量控制，或在“系统设置 → 声音”中选择其他输出设备。"
+        case .cannotMute:
+            return "当前输出设备未能进入静音。请使用设备上的静音控制，或在系统设置中检查输出设备。"
+        case .cannotSetZeroLevel:
+            return "当前输出设备未能将音量降至零。请使用设备上的静音或音量控制。"
         case .cannotUnmute:
             return "当前输出设备无法取消静音。请先使用设备上的控制取消静音，或选择其他输出设备。"
         case .cannotSetSafeLevel:

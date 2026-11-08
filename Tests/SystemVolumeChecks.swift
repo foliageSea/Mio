@@ -22,6 +22,93 @@ struct SystemVolumeChecks {
         near(try adjust(main, -5), 0)
         precondition(main.defaultReads == 3)
 
+        let zero = MockVolumeBackend(values: [0: 0.01], mutes: [0: false])
+        near(try adjust(zero, -0.01), 0)
+        precondition(zero.values[0] == 0 && zero.mutes[0] == true)
+        precondition(zero.events == ["volume:0", "mute:0:true"])
+        near(try adjust(zero, 0.01), 0.01)
+        precondition(zero.mutes[0] == false)
+        precondition(Array(zero.events.suffix(2)) == ["volume:0", "mute:0:false"])
+
+        let residue = MockVolumeBackend(values: [0: 0.1], mutes: [0: false])
+        for _ in 0..<10 { _ = try adjust(residue, -0.01) }
+        precondition(residue.values[0] == 0 && residue.mutes[0] == true)
+        let writesAtZero = residue.events.count
+        near(try adjust(residue, -0.01), 0)
+        precondition(residue.events.count == writesAtZero)
+        let alreadyZero = MockVolumeBackend(values: [0: 0], mutes: [0: false])
+        near(try adjust(alreadyZero, -0.01), 0)
+        precondition(alreadyZero.events == ["mute:0:true"])
+        let subPercent = MockVolumeBackend(values: [0: 0.014], mutes: [0: false])
+        near(try adjust(subPercent, -0.01), 0.004)
+        precondition(subPercent.mutes[0] == false)
+
+        let perChannelZero = MockVolumeBackend(values: [1: 0.003, 2: 0.01], mutes: [1: false, 2: false])
+        near(try adjust(perChannelZero, -0.01), 0)
+        precondition(perChannelZero.values.values.allSatisfy { $0 == 0 })
+        precondition(perChannelZero.mutes.values.allSatisfy { $0 })
+        let masterPreferred = MockVolumeBackend(values: [0: 0.01], mutes: [0: false, 1: false, 2: false])
+        near(try adjust(masterPreferred, -0.01), 0)
+        precondition(masterPreferred.mutes[0] == true && masterPreferred.mutes[1] == false)
+        let channelFallback = MockVolumeBackend(values: [0: 0.01], mutes: [0: false, 1: false, 2: false])
+        channelFallback.readOnlyMutes = [0]
+        near(try adjust(channelFallback, -0.01), 0)
+        precondition(channelFallback.mutes[0] == false && channelFallback.mutes[1] == true && channelFallback.mutes[2] == true)
+        let lockedZero = MockVolumeBackend(values: [0: 0.01], mutes: [0: false])
+        lockedZero.readOnlyMutes = [0]
+        fails(lockedZero, -0.01)
+        precondition(lockedZero.events.isEmpty)
+        let incompleteMute = MockVolumeBackend(values: [0: 0.01], mutes: [1: false])
+        fails(incompleteMute, -0.01)
+        precondition(incompleteMute.events.isEmpty)
+        let failedMute = MockVolumeBackend(values: [0: 0.01], mutes: [0: false])
+        failedMute.failMuteOnce = true
+        fails(failedMute, -0.01)
+        near(failedMute.values[0]!, 0.01)
+        precondition(failedMute.mutes[0] == false)
+        let ignoredMute = MockVolumeBackend(values: [0: 0.01], mutes: [0: false])
+        ignoredMute.ignoreMuteWrites = true
+        fails(ignoredMute, -0.01)
+        near(ignoredMute.values[0]!, 0.01)
+        let ignoredZero = MockVolumeBackend(values: [0: 0.01])
+        ignoredZero.ignoreVolumeWrites = true
+        fails(ignoredZero, -0.01)
+        near(ignoredZero.values[0]!, 0.01)
+        let muteOnly = MockVolumeBackend(values: [0: 0.01], mutes: [0: false])
+        muteOnly.ignoreVolumeWrites = true
+        near(try adjust(muteOnly, -0.01), 0)
+        precondition(muteOnly.mutes[0] == true)
+
+        let quantizedZero = MockVolumeBackend(values: [0: 0.014], mutes: [0: false])
+        quantizedZero.quantum = 0.1
+        near(try adjust(quantizedZero, -0.01), 0)
+        precondition(quantizedZero.mutes[0] == true)
+        let lockedPartial = MockVolumeBackend(values: [0: 0.01], mutes: [1: true, 2: false])
+        lockedPartial.readOnlyMutes = [1]
+        near(try adjust(lockedPartial, -0.01), 0)
+        precondition(lockedPartial.mutes[1] == true && lockedPartial.mutes[2] == true)
+        near(try adjust(lockedPartial, 0.01), 0.01)
+        precondition(lockedPartial.mutes[1] == true && lockedPartial.mutes[2] == false)
+        let ignoredUnmute = MockVolumeBackend(values: [0: 0.9], mutes: [0: true])
+        ignoredUnmute.ignoreMuteWrites = true
+        fails(ignoredUnmute, 0.01)
+        precondition(ignoredUnmute.mutes[0] == true)
+        near(ignoredUnmute.values[0]!, 0.9)
+        let ignoredRestore = MockVolumeBackend(values: [0: 0.9], mutes: [0: true])
+        ignoredRestore.failUnmuteOnce = true
+        ignoredRestore.ignoreRemute = true
+        do {
+            _ = try adjust(ignoredRestore, 0.01)
+            preconditionFailure("Expected ignored rollback error")
+        } catch SystemVolumeError.incompleteRestore {}
+        near(ignoredRestore.values[0]!, 0.01)
+        precondition(ignoredRestore.mutes[0] == false)
+        let zeroWake = MockVolumeBackend(values: [0: 0.9], mutes: [0: true])
+        zeroWake.quantum = 0.1
+        fails(zeroWake, 0.01)
+        precondition(zeroWake.mutes[0] == true)
+        near(zeroWake.values[0]!, 0.9)
+
         let balanced = MockVolumeBackend(values: [1: 0.2, 2: 0.8])
         near(try adjust(balanced, 0.4), 1)
         near(balanced.values[1]!, 0.25)
@@ -139,8 +226,11 @@ private final class MockVolumeBackend: SystemVolumeBackend {
     var readOnlyMutes: Set<UInt32> = []
     var failedRead: UInt32?
     var failVolumeWriteOnce: UInt32?
+    var failMuteOnce = false
+    var ignoreMuteWrites = false
     var failUnmuteOnce = false
     var failRemute = false
+    var ignoreRemute = false
     var failReadAfterWrite = false
     var ignoreVolumeWrites = false
     var quantum: Float?
@@ -185,7 +275,12 @@ private final class MockVolumeBackend: SystemVolumeBackend {
     func setMuted(_ device: AudioObjectID, _ element: AudioObjectPropertyElement, _ value: Bool) throws {
         events.append("mute:\(element):\(value)")
         if value && failRemute { throw CoreAudioError.missingValue("mock restore mute") }
+        if ignoreMuteWrites || (value && ignoreRemute) { return }
         mutes[element] = value
+        if value && failMuteOnce {
+            failMuteOnce = false
+            throw CoreAudioError.missingValue("mock mute")
+        }
         if !value && failUnmuteOnce {
             failUnmuteOnce = false
             throw CoreAudioError.missingValue("mock unmute")
