@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Mio/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="128" height="128" alt="Mio 应用图标">
+  <img src="docs/app-icon.png" width="128" height="128" alt="Mio 应用图标">
 </p>
 
 # Mio
@@ -8,7 +8,7 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 
 ## 运行
 
-1. 使用 Xcode 打开 `Mio.xcodeproj`。
+1. 使用 Xcode 26 或更高版本打开 `Mio.xcodeproj`。
 2. 在 Mio target 的 Signing & Capabilities 中选择开发团队。
 3. 运行应用，并在首次调节音量时允许系统音频录制权限。
 4. 从菜单栏 Mio 字标打开 Mio。
@@ -106,11 +106,11 @@ xcrun swiftc Mio/Audio/CoreAudioHelpers.swift Mio/Audio/SystemVolumeController.s
 
 应用图标使用连笔 Mio 字标，菜单栏使用同款透明底字标并随系统深浅色自动切换；音量面板左上角使用与菜单栏一致的透明底字标，不显示额外文字标题。
 
-应用图标矢量源文件位于 `Mio/Assets.xcassets/MioLogo.imageset/MioLogo.svg`，各尺寸图标保存在 `Mio/Assets.xcassets/AppIcon.appiconset`；菜单栏与面板字标使用 `Mio/Assets.xcassets/MioMenuBar.imageset`。
+应用图标使用 `Mio/AppIcon.icon` 原生 Icon Composer 资源，将白色背景和透明 Mio 字标分层，由系统生成圆角和各尺寸图标，避免旧位图在新系统中被再次套上灰色底板。Xcode 会同时生成旧系统的兼容图标。菜单栏与面板字标使用 `Mio/Assets.xcassets/MioMenuBar.imageset`。
 
 ## macOS 26 界面
 
-界面已适配 macOS 26 Liquid Glass。使用 Xcode 26 或更高版本构建时，控制按钮、状态徽标和容器会启用原生 `GlassEffectContainer` 与 `glassEffect`，图标按钮采用紧凑圆形样式；使用旧版 Xcode 构建时会自动采用 Material 兼容样式，音频功能保持一致。
+界面已适配 macOS 26 Liquid Glass。使用 Xcode 26 或更高版本构建，运行于 macOS 26 及更新系统时，控制按钮、状态徽标和容器会启用原生 `GlassEffectContainer` 与 `glassEffect`，图标按钮采用紧凑圆形样式；macOS 14.2–25 自动采用 Material 兼容样式。
 
 ## 当前范围
 
