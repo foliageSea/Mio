@@ -37,6 +37,20 @@ Mio 是一个 macOS 14.2+ 菜单栏应用，使用 Core Audio Process Tap 调节
 
 发布 GitHub Release（包括预发布版本）后，工作流会检出对应标签，在 macOS runner 上使用最新稳定版 Xcode 构建 Apple Silicon + Intel 通用安装包，并上传到该 Release。工作流文件必须已包含在发布标签指向的提交中。
 
+先提交当前工作区的改动，再使用发版脚本更新应用版本并发布（需要安装 GitHub CLI，并执行过 `gh auth login`）：
+
+```sh
+./release.sh 0.2.0 --dry-run  # 预演，不修改文件或访问远端
+./release.sh 0.2.0            # 正式发布
+./release.sh 0.3.0-beta.1     # 发布预发布版本
+```
+
+脚本同步修改 Xcode 项目中 Debug / Release 的应用版本，并递增本地构建号，创建 `chore: release v版本号` 提交和带注释的版本标签，将当前分支及标签一起推送到 `origin`，再创建带自动发行说明的 GitHub Release。预发布版本自动标记为 Prerelease；应用内版本使用数字核心，例如 `0.3.0-beta.1` 对应 `0.3.0`。CI 安装包的构建号仍使用 Actions 运行编号。
+
+正式发版要求工作区干净，远端分支没有本地缺失的提交，并拒绝覆盖冲突标签。推送或创建 Release 失败后，可修复问题并使用相同版本重新执行；脚本会复用对应的版本提交和标签，不会重复递增构建号。已经存在的 Release 不会重复创建，已有草稿则会被发布。
+
+脚本集成测试使用临时 Git 仓库和模拟 GitHub 接口，可执行 `python3 Tests/ReleaseScriptChecks.py`，不会实际发布 Release。
+
 标签支持 `v1.2.3`、`1.2.3` 或 `v1.2.3-beta.1` 等版本格式。例如发布 `v1.2.3` 后，Release 会附带：
 
 - `Mio-1.2.3.dmg`
