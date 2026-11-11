@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let window = NSWindow(contentViewController: controller)
             window.title = "Mio 设置"
             window.styleMask = [.titled, .closable]
-            window.setContentSize(NSSize(width: 480, height: 376))
+            window.setContentSize(NSSize(width: 480, height: 536))
             window.isReleasedWhenClosed = false
             window.center()
             settingsWindow = NSWindowController(window: window)

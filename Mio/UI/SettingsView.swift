@@ -1,11 +1,33 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var settings: ShortcutSettings
+    @StateObject private var loginItem = LoginItemSettings()
 
     var body: some View {
         Form {
+            Section("通用") {
+                Toggle("登录时启动", isOn: Binding(
+                    get: { loginItem.isRegistered },
+                    set: { enabled in Task { await loginItem.setEnabled(enabled) } }
+                ))
+                .disabled(loginItem.isUpdating)
+                if loginItem.status == .requiresApproval {
+                    Text("需要在系统设置中允许 Mio 登录时启动。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("打开登录项设置") {
+                        SMAppService.openSystemSettingsLoginItems()
+                    }
+                }
+                if let error = loginItem.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
             Section {
                 ForEach(ShortcutAction.allCases, id: \.self) { action in
                     LabeledContent(action.title) {
@@ -56,11 +78,48 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 480, height: 360)
+        .frame(width: 480, height: 520)
         .padding(.vertical, 8)
+        .onAppear { loginItem.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            loginItem.refresh()
+        }
         .onDisappear { settings.cancelRecording() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
             settings.cancelRecording()
+        }
+    }
+}
+
+@MainActor
+private final class LoginItemSettings: ObservableObject {
+    @Published private(set) var status = SMAppService.mainApp.status
+    @Published private(set) var isUpdating = false
+    @Published private(set) var errorMessage: String?
+
+    // A pending registration stays switchable so the user can cancel it.
+    var isRegistered: Bool { status == .enabled || status == .requiresApproval }
+
+    func refresh() {
+        status = SMAppService.mainApp.status
+    }
+
+    func setEnabled(_ enabled: Bool) async {
+        guard !isUpdating else { return }
+        isUpdating = true
+        errorMessage = nil
+        defer {
+            refresh()
+            isUpdating = false
+        }
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try await SMAppService.mainApp.unregister()
+            }
+        } catch {
+            errorMessage = "无法\(enabled ? "开启" : "关闭")登录时启动：\(error.localizedDescription)"
         }
     }
 }
